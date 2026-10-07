@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>戰車道聯盟台灣支部總部 - 追獵者目標摸彩系統</title>
+    <title>戰車道聯盟台灣支部總部 - 追獵者目標摸彩系統 (Firebase 雲端版)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -39,68 +39,48 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        body {
-            font-family: 'Noto Sans TC', sans-serif;
-            user-select: none;
-            background-color: #121413;
-        }
+        body { font-family: 'Noto Sans TC', sans-serif; user-select: none; background-color: #121413; }
         .font-tech { font-family: 'Share Tech Mono', monospace; }
         .font-serif-tc { font-family: 'Noto Serif TC', serif; }
-        
         .bg-tactical-grid {
             background-size: 40px 40px;
             background-image: 
                 linear-gradient(to right, rgba(194, 155, 56, 0.05) 1px, transparent 1px),
                 linear-gradient(to bottom, rgba(194, 155, 56, 0.05) 1px, transparent 1px);
         }
-
         .paper-card {
-            background-color: #f4efeb;
-            color: #1a1a1a;
+            background-color: #f4efeb; color: #1a1a1a;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), inset 0 0 100px rgba(180, 160, 130, 0.25);
             border: 2px solid #3b443b;
         }
-
         .rivet {
-            width: 8px;
-            height: 8px;
+            width: 8px; height: 8px;
             background: linear-gradient(135deg, #666 0%, #222 100%);
             border-radius: 50%;
             box-shadow: inset 1px 1px 1px rgba(255,255,255,0.4), 1px 1px 2px rgba(0,0,0,0.8);
             position: absolute;
         }
-
         .stamp-judged {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            text-transform: uppercase;
-            font-weight: 900;
-            color: #dc2626;
-            border: 4px double #dc2626;
-            border-radius: 6px;
-            transform: rotate(-12deg);
-            box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
-            text-shadow: 1px 1px 0px rgba(0,0,0,0.2);
-            opacity: 0.92;
+            display: inline-block; padding: 0.25rem 0.75rem; text-transform: uppercase; font-weight: 900;
+            color: #dc2626; border: 4px double #dc2626; border-radius: 6px; transform: rotate(-12deg);
+            box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2); text-shadow: 1px 1px 0px rgba(0,0,0,0.2); opacity: 0.92;
         }
-
         .scanline-overlay {
-            background: linear-gradient(
-                rgba(18, 16, 16, 0) 50%, 
-                rgba(0, 0, 0, 0.35) 50%
-            );
-            background-size: 100% 4px;
-            pointer-events: none;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%);
+            background-size: 100% 4px; pointer-events: none;
         }
-
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #1c1e1d; }
         ::-webkit-scrollbar-thumb { background: #997a22; border-radius: 4px; }
     </style>
+
+    <!-- Firebase SDK (v9/v10 Compat Mode) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 </head>
 <body class="h-full flex flex-col bg-tactical-grid text-stone-100 antialiased selection:bg-amber-600 selection:text-white">
 
-    <!-- 音效與各畫面音樂標籤區域 (可自行更改檔名，建議使用 .mp3 或 .wav) -->
+    <!-- 音效檔與音樂標籤 -->
     <audio id="audio-cannon" src="cannon_fire.wav" preload="auto"></audio>
     <audio id="bgm-join" src="bgm_join.mp3" loop preload="auto"></audio>
     <audio id="bgm-stage" src="bgm_stage.mp3" loop preload="auto"></audio>
@@ -115,7 +95,7 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <h1 class="font-black text-lg text-amber-400 tracking-wider font-serif-tc">戰車道聯盟台灣支部總部</h1>
-                        <span class="text-[10px] px-2 py-0.5 rounded bg-amber-950 text-amber-300 font-tech border border-amber-600/40">SENSHA-DO TAIWAN</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-amber-950 text-amber-300 font-tech border border-amber-600/40">CLOUD REALTIME</span>
                     </div>
                     <p class="text-xs text-stone-400 font-tech tracking-wide">Sd.Kfz.138/2 Hetzer Target Lottery System</p>
                 </div>
@@ -191,7 +171,7 @@
                 </form>
 
                 <div class="mt-6 pt-4 border-t border-stone-400/60 flex items-center justify-between text-xs font-bold text-stone-700">
-                    <span>目前已登錄選手總數：</span>
+                    <span>目前線上已登錄選手總數：</span>
                     <span id="display-total-count" class="font-tech text-red-700 text-lg font-black">0 位</span>
                 </div>
             </div>
@@ -199,7 +179,7 @@
             <div id="ticket-card" class="hidden mt-4 bg-stone-900 border-2 border-emerald-500/60 rounded-xl p-5 text-center space-y-3 shadow-2xl animate-fade-in">
                 <div class="text-emerald-400 text-3xl"><i class="fa-solid fa-circle-check"></i></div>
                 <h3 class="font-black text-emerald-300 text-lg">登錄成功！ Panzer Vor!</h3>
-                <p class="text-xs text-stone-300">您的選手資料已成功登錄至台灣支部資料庫，請於大螢幕關注摸彩結果！</p>
+                <p class="text-xs text-stone-300">您的選手資料已成功即時同步至雲端資料庫，請於大螢幕關注摸彩結果！</p>
                 <div class="pt-2">
                     <button onclick="resetEntryForm()" class="px-4 py-1.5 bg-emerald-600/30 text-emerald-300 border border-emerald-500/50 rounded-lg text-xs hover:bg-emerald-600/50">
                         繼續幫其他隊友登錄
@@ -244,9 +224,6 @@
                 <video id="video-cutin" class="absolute inset-0 w-full h-full object-cover hidden z-10" playsinline>
                     <source src="tank_flag_speed_only.mp4" type="video/mp4">
                 </video>
-               
-             <!-- 戰車砲擊聲音效檔 (可替換檔名) -->
-               <audio id="audio-cannon" src="cannon_fire.wav" preload="auto"></audio>
 
                 <!-- Scope Left HUD -->
                 <div class="absolute top-4 left-4 font-tech text-xs text-emerald-400/90 space-y-1 pointer-events-none select-none bg-stone-950/80 p-2.5 rounded border border-emerald-500/30 z-20">
@@ -277,7 +254,7 @@
                 </div>
                 <div>
                     <h3 class="text-xl font-black text-stone-900 font-serif-tc">戰車道聯盟台灣支部總部 - 後台解密</h3>
-               
+                    <p class="text-xs text-stone-600 mt-1">預設密碼：<code class="text-red-700 font-bold">admin123</code></p>
                 </div>
                 <div class="space-y-3">
                     <input type="password" id="input-admin-pass" placeholder="請輸入安全存取密碼" 
@@ -302,7 +279,7 @@
                     </div>
 
                     <div class="text-xs text-stone-400 font-tech">
-                        總部權限已解鎖 | <span class="text-emerald-400">HEADQUARTERS ONLINE</span>
+                        雲端資料庫狀態 | <span class="text-emerald-400">FIREBASE ONLINE</span>
                     </div>
                 </div>
 
@@ -334,7 +311,7 @@
                         <div class="p-4 border-b border-stone-800 flex items-center justify-between gap-4">
                             <h3 class="font-black text-sm text-stone-200 flex items-center gap-2">
                                 <i class="fa-solid fa-list-ol text-amber-400"></i>
-                                戰車道選手名冊資料庫
+                                戰車道選手名冊資料庫 (雲端同步)
                             </h3>
                             <input type="text" id="admin-search" oninput="renderAdminTable()" placeholder="搜尋姓名或學校/隊伍..." 
                                 class="px-3 py-1.5 bg-stone-950 border border-stone-700 rounded-lg text-xs w-52 text-stone-100 focus:outline-none focus:border-amber-400">
@@ -483,6 +460,25 @@
     </div>
 
     <script>
+        // -------------------------------------------------------------
+        // 🔥 Firebase 連線初始化
+        // -------------------------------------------------------------
+        const firebaseConfig = {
+            apiKey: "AIzaSyDPSefHz_G_WvMt7on4rUgc4jrRYLNb2Aw",
+            authDomain: "gup-bh.firebaseapp.com",
+            databaseURL: "https://gup-bh-default-rtdb.firebaseio.com/",
+            projectId: "gup-bh",
+            storageBucket: "gup-bh.firebasestorage.ap",
+            messagingSenderId: "421844423196",
+            appId: "1:421844423196:web:531e3df2ca80e4f0f685d9"
+        };
+
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const participantsRef = db.ref('senshado_participants');
+        const prizesRef = db.ref('senshado_prizes');
+
         // App State & Data
         let participants = [];
         let prizes = [];
@@ -503,43 +499,39 @@
         ];
 
         function initApp() {
-            const savedData = localStorage.getItem('senshado_participants');
-            if (savedData) {
-                try { participants = JSON.parse(savedData); } catch(e) { participants = []; }
-            } else {
-                participants = [
-                    { id: '1', name: '西住美穗', dept: '大洗女子學園 / 鮟鱇隊', won: false, prize: '' },
-                    { id: '2', name: '大吉嶺', dept: '聖葛羅莉安娜女學院', won: false, prize: '' },
-                    { id: '3', name: '凱伊', dept: '桑德斯大學附屬高校', won: false, prize: '' },
-                    { id: '4', name: '喀秋莎', dept: '真理高校', won: false, prize: '' },
-                    { id: '5', name: '西住真穗', dept: '黑森峰女子學園', won: false, prize: '' },
-                    { id: '6', name: '安齊奧 (安喬薇)', dept: '安齊奧高校', won: false, prize: '' }
-                ];
-                saveData();
-            }
+            // 🔥 即時監聽雲端選手名單 (Realtime Listener)
+            participantsRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    // Firebase 轉 Array
+                    participants = Object.keys(data).map(key => ({
+                        id: key,
+                        ...data[key]
+                    }));
+                } else {
+                    participants = [];
+                }
+                updateCounts();
+                renderAdminTable();
+            });
 
-            const savedPrizes = localStorage.getItem('senshado_prizes');
-            if (savedPrizes) {
-                try { prizes = JSON.parse(savedPrizes); } catch(e) { prizes = [...DEFAULT_PRIZES]; }
-            } else {
-                prizes = [...DEFAULT_PRIZES];
-                savePrizes();
-            }
+            // 🔥 即時監聽雲端獎項設定
+            prizesRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    prizes = Object.keys(data).map(key => ({
+                        id: key,
+                        ...data[key]
+                    }));
+                } else {
+                    // 若無資料則塞入預設值
+                    DEFAULT_PRIZES.forEach(p => prizesRef.child(p.id).set(p));
+                }
+                renderPrizeDropdown();
+                renderPrizeCards();
+            });
 
-            updateCounts();
             initSightCanvas();
-            renderPrizeDropdown();
-        }
-
-        function saveData() {
-            localStorage.setItem('senshado_participants', JSON.stringify(participants));
-            updateCounts();
-        }
-
-        function savePrizes() {
-            localStorage.setItem('senshado_prizes', JSON.stringify(prizes));
-            renderPrizeDropdown();
-            renderPrizeCards();
         }
 
         function updateCounts() {
@@ -558,7 +550,6 @@
             select.innerHTML = prizes.map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('');
         }
 
-        // 切換頁籤與對應背景音樂 (BGM)
         function switchTab(tab) {
             activeTab = tab;
             ['join', 'stage', 'admin'].forEach(t => {
@@ -577,11 +568,9 @@
                 resizeCanvas();
             }
 
-            // 切換音樂
             switchBGM(tab);
         }
 
-        // 背景音樂切換控制函式
         function switchBGM(tab) {
             const bgmList = {
                 'join': document.getElementById('bgm-join'),
@@ -589,17 +578,12 @@
                 'admin': document.getElementById('bgm-admin')
             };
 
-            // 1. 暫停所有背景音樂並重置時間
             Object.values(bgmList).forEach(bgm => {
-                if (bgm) {
-                    bgm.pause();
-                    bgm.currentTime = 0;
-                }
+                if (bgm) { bgm.pause(); bgm.currentTime = 0; }
             });
 
-            // 2. 如果開聲音，播放對應頁籤的音樂
             if (isSoundEnabled && bgmList[tab]) {
-                bgmList[tab].play().catch(err => console.log("BGM autoplay blocked until user click:", err));
+                bgmList[tab].play().catch(err => console.log("Autoplay blocked:", err));
             }
         }
 
@@ -648,14 +632,12 @@
                 text.innerText = "聲音開啟";
                 if (video) video.muted = false;
                 if (audio) audio.muted = false;
-                switchBGM(activeTab); // 重新播放當前分頁音樂
+                switchBGM(activeTab);
             } else {
                 icon.className = "fa-solid fa-volume-xmark text-stone-500";
                 text.innerText = "靜音模式";
                 if (video) video.muted = true;
                 if (audio) audio.muted = true;
-                
-                // 關閉所有背景音樂
                 ['bgm-join', 'bgm-stage', 'bgm-admin'].forEach(id => {
                     const bgm = document.getElementById(id);
                     if (bgm) bgm.pause();
@@ -695,7 +677,6 @@
             } catch(e) { console.log(e); }
         }
 
-        // 獨立播放戰車砲擊聲音效
         function playCannonSound() {
             if (!isSoundEnabled) return;
             const cannonAudio = document.getElementById('audio-cannon');
@@ -710,7 +691,7 @@
         bgImage.src = '1223.jpg';
 
         let canvas, ctx;
-        let drawState = 'IDLE'; // IDLE, LOCKING, VIDEO_CUTIN, WINNER
+        let drawState = 'IDLE';
         let stateTimer = 0;
         let currentWinnerCandidate = null;
 
@@ -736,13 +717,11 @@
             }
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
 
             if (drawState !== 'VIDEO_CUTIN') {
                 ctx.save();
-                
                 let scale = 1.0;
                 let shakeX = 0;
                 let shakeY = 0;
@@ -750,8 +729,7 @@
                 if (drawState === 'IDLE') {
                     shakeX = Math.sin(Date.now() * 0.002) * 2;
                     shakeY = Math.cos(Date.now() * 0.0015) * 1.5;
-                } 
-                else if (drawState === 'LOCKING') {
+                } else if (drawState === 'LOCKING') {
                     scale = 1.0 + (stateTimer / 30) * 0.05;
                     shakeX = (Math.random() - 0.5) * 6;
                     shakeY = (Math.random() - 0.5) * 6;
@@ -785,7 +763,6 @@
 
         function drawOverlayScopeHUD(cx, cy) {
             ctx.save();
-
             const isLocking = (drawState === 'LOCKING');
             const hudColor = isLocking ? 'rgba(248, 113, 113, 0.85)' : 'rgba(52, 211, 153, 0.75)';
 
@@ -823,6 +800,7 @@
             ctx.restore();
         }
 
+        // 🔥 抽獎並更新 Firebase 狀態
         function startLotteryDraw() {
             if (drawState !== 'IDLE' && drawState !== 'WINNER') return;
 
@@ -836,9 +814,12 @@
             currentWinnerCandidate = pool[winnerIdx];
 
             const selectedPrize = document.getElementById('select-prize').value;
-            currentWinnerCandidate.won = true;
-            currentWinnerCandidate.prize = selectedPrize;
-            saveData();
+            
+            // 🔥 即時更新雲端中獎狀態
+            participantsRef.child(currentWinnerCandidate.id).update({
+                won: true,
+                prize: selectedPrize
+            });
 
             drawState = 'LOCKING';
             stateTimer = 0;
@@ -852,7 +833,6 @@
         function updateAnimationLogic() {
             if (drawState === 'LOCKING') {
                 stateTimer++;
-
                 if (stateTimer > 30) {
                     drawState = 'VIDEO_CUTIN';
                     playCutinVideo();
@@ -906,6 +886,7 @@
             renderAdminTable();
         }
 
+        // 🔥 新增選手至 Firebase
         function handleRegister(e) {
             e.preventDefault();
             const nameInput = document.getElementById('input-name').value.trim();
@@ -913,14 +894,13 @@
 
             if (!nameInput) return;
 
-            participants.push({
-                id: Date.now().toString(),
+            // 推送資料至 Firebase (自動產生雲端 Unique ID)
+            participantsRef.push({
                 name: nameInput,
                 dept: deptInput,
                 won: false,
                 prize: ''
             });
-            saveData();
 
             document.getElementById('entry-form').reset();
             document.getElementById('ticket-card').classList.remove('hidden');
@@ -1004,38 +984,38 @@
             `).join('');
         }
 
+        // 🔥 切換雲端中獎狀態
         function toggleWonStatus(id) {
             const p = participants.find(x => x.id === id);
             if (p) {
-                p.won = !p.won;
-                if (!p.won) p.prize = '';
-                saveData();
-                renderAdminTable();
+                participantsRef.child(id).update({
+                    won: !p.won,
+                    prize: !p.won ? '' : p.prize
+                });
             }
         }
 
+        // 🔥 刪除雲端選手
         function deleteParticipant(id) {
-            participants = participants.filter(p => p.id !== id);
-            saveData();
-            renderAdminTable();
+            participantsRef.child(id).remove();
         }
 
+        // 🔥 重置所有中獎者
         function triggerResetWinners() {
             showCustomConfirm("確定要重置所有選手的中獎狀態嗎？", "重置判定確認", (confirmed) => {
                 if (confirmed) {
-                    participants.forEach(p => { p.won = false; p.prize = ''; });
-                    saveData();
-                    renderAdminTable();
+                    participants.forEach(p => {
+                        participantsRef.child(p.id).update({ won: false, prize: '' });
+                    });
                 }
             });
         }
 
+        // 🔥 清空雲端資料庫
         function triggerClearParticipants() {
             showCustomConfirm("警告：確定要清空整份選手名單嗎？", "清空名單警告", (confirmed) => {
                 if (confirmed) {
-                    participants = [];
-                    saveData();
-                    renderAdminTable();
+                    participantsRef.remove();
                 }
             });
         }
@@ -1106,6 +1086,7 @@
             document.getElementById('modal-prize-action').classList.add('hidden');
         }
 
+        // 🔥 更新雲端獎項
         function savePrizeAction() {
             const name = document.getElementById('prize-input-name').value.trim();
             const desc = document.getElementById('prize-input-desc').value.trim();
@@ -1113,29 +1094,23 @@
             if (!name) return;
 
             if (editingPrizeId) {
-                const p = prizes.find(x => x.id === editingPrizeId);
-                if (p) {
-                    p.name = name;
-                    p.desc = desc;
-                }
+                prizesRef.child(editingPrizeId).update({ name: name, desc: desc });
             } else {
-                prizes.push({ id: 'p_' + Date.now(), name: name, desc: desc });
+                prizesRef.push({ name: name, desc: desc });
             }
 
-            savePrizes();
             closePrizeModal();
         }
 
         function deletePrize(id) {
-            prizes = prizes.filter(p => p.id !== id);
-            savePrizes();
+            prizesRef.child(id).remove();
         }
 
         function triggerResetPrizes() {
             showCustomConfirm("是否重置載入預設獎項清單？", "載入預設", (confirmed) => {
                 if (confirmed) {
-                    prizes = [...DEFAULT_PRIZES];
-                    savePrizes();
+                    prizesRef.remove();
+                    DEFAULT_PRIZES.forEach(p => prizesRef.child(p.id).set(p));
                 }
             });
         }
@@ -1164,12 +1139,13 @@
             document.getElementById('batch-names').value = '';
         }
 
+        // 🔥 後台手動新增寫入 Firebase
         function saveAdminAction() {
             if (adminActionType === 'single') {
                 const name = document.getElementById('add-name').value.trim();
                 const dept = document.getElementById('add-dept').value.trim();
                 if (name) {
-                    participants.push({ id: Date.now().toString(), name: name, dept: dept, won: false, prize: '' });
+                    participantsRef.push({ name: name, dept: dept, won: false, prize: '' });
                 }
             } else {
                 const batchRaw = document.getElementById('batch-names').value;
@@ -1181,14 +1157,12 @@
                         const name = parts[0].trim();
                         const dept = parts[1] ? parts[1].trim() : '';
                         if (name) {
-                            participants.push({ id: (Date.now() + Math.random()).toString(), name: name, dept: dept, won: false, prize: '' });
+                            participantsRef.push({ name: name, dept: dept, won: false, prize: '' });
                         }
                     }
                 });
             }
 
-            saveData();
-            renderAdminTable();
             closeAdminModal();
         }
 
@@ -1198,7 +1172,6 @@
 
         window.onload = function() {
             initApp();
-            // 頁面初次載入時播放第一個分頁 (報名頁) 音樂
             switchBGM('join');
         };
     </script>
