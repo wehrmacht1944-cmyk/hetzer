@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>戰車道聯盟台灣支部總部 - 追獵者目標摸彩系統 (Firebase 雲端版)</title>
+    <title>戰車道聯盟台灣支部總部 - 追獵者目標摸彩系統 (Firebase 雲端加密版)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -80,7 +80,7 @@
 </head>
 <body class="h-full flex flex-col bg-tactical-grid text-stone-100 antialiased selection:bg-amber-600 selection:text-white">
 
-    <!-- 音效檔與音樂標籤 -->
+    <!-- 音效檔與音樂標籤 (自動重播 loop) -->
     <audio id="audio-cannon" src="cannon_fire.wav" preload="auto"></audio>
     <audio id="bgm-join" src="bgm_join.mp3" loop preload="auto"></audio>
     <audio id="bgm-stage" src="bgm_stage.mp3" loop preload="auto"></audio>
@@ -254,6 +254,7 @@
                 </div>
                 <div>
                     <h3 class="text-xl font-black text-stone-900 font-serif-tc">戰車道聯盟台灣支部總部 - 後台解密</h3>
+                    <p class="text-xs text-stone-600 mt-1">請輸入安全存取密碼以解鎖最高權限</p>
                 </div>
                 <div class="space-y-3">
                     <input type="password" id="input-admin-pass" placeholder="請輸入安全存取密碼" 
@@ -460,7 +461,7 @@
 
     <script>
         // -------------------------------------------------------------
-        // 🔥 Firebase 連線初始化
+        // 🔥 Firebase 連線初始化 (請確保這裡填入您專案的金鑰組合)
         // -------------------------------------------------------------
         const firebaseConfig = {
             apiKey: "AIzaSyDPSefHz_G_WvMt7on4rUgc4jrRYLNb2Aw",
@@ -472,7 +473,6 @@
             appId: "1:421844423196:web:531e3df2ca80e4f0f685d9"
         };
 
-        // 初始化 Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const participantsRef = db.ref('senshado_participants');
@@ -484,7 +484,10 @@
         let activeTab = 'join';
         let adminTab = 'roster';
         let isAdminAuthenticated = false;
-        let adminPasswordHash = "admin123";
+        
+        // 🔒 SHA-256 加密密碼
+        const adminPasswordHash = "28a50cbe9f42a7ec8f844a4eb2fb12d5dfbd1be364b4ec0f4aeccfdddcad9cb8";
+        
         let isSoundEnabled = true;
         let editingPrizeId = null;
         let pendingDialogCallback = null;
@@ -498,11 +501,10 @@
         ];
 
         function initApp() {
-            // 🔥 即時監聽雲端選手名單 (Realtime Listener)
+            // 🔥 即時監聽雲端選手名單
             participantsRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
-                    // Firebase 轉 Array
                     participants = Object.keys(data).map(key => ({
                         id: key,
                         ...data[key]
@@ -523,7 +525,6 @@
                         ...data[key]
                     }));
                 } else {
-                    // 若無資料則塞入預設值
                     DEFAULT_PRIZES.forEach(p => prizesRef.child(p.id).set(p));
                 }
                 renderPrizeDropdown();
@@ -799,7 +800,6 @@
             ctx.restore();
         }
 
-        // 🔥 抽獎並更新 Firebase 狀態
         function startLotteryDraw() {
             if (drawState !== 'IDLE' && drawState !== 'WINNER') return;
 
@@ -814,7 +814,6 @@
 
             const selectedPrize = document.getElementById('select-prize').value;
             
-            // 🔥 即時更新雲端中獎狀態
             participantsRef.child(currentWinnerCandidate.id).update({
                 won: true,
                 prize: selectedPrize
@@ -885,7 +884,6 @@
             renderAdminTable();
         }
 
-        // 🔥 新增選手至 Firebase
         function handleRegister(e) {
             e.preventDefault();
             const nameInput = document.getElementById('input-name').value.trim();
@@ -893,7 +891,6 @@
 
             if (!nameInput) return;
 
-            // 推送資料至 Firebase (自動產生雲端 Unique ID)
             participantsRef.push({
                 name: nameInput,
                 dept: deptInput,
@@ -909,9 +906,17 @@
             document.getElementById('ticket-card').classList.add('hidden');
         }
 
-        function verifyAdminPassword() {
-            const pwd = document.getElementById('input-admin-pass').value;
-            if (pwd === adminPasswordHash) {
+        // 🔒 使用 SHA-256 進行後台密碼驗證
+        async function verifyAdminPassword() {
+            const pwdInput = document.getElementById('input-admin-pass').value;
+            
+            const encoder = new TextEncoder();
+            const data = encoder.encode(pwdInput);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashedPwd = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+            if (hashedPwd === adminPasswordHash) {
                 isAdminAuthenticated = true;
                 document.getElementById('admin-auth-box').classList.add('hidden');
                 document.getElementById('admin-content').classList.remove('hidden');
@@ -983,7 +988,6 @@
             `).join('');
         }
 
-        // 🔥 切換雲端中獎狀態
         function toggleWonStatus(id) {
             const p = participants.find(x => x.id === id);
             if (p) {
@@ -994,12 +998,10 @@
             }
         }
 
-        // 🔥 刪除雲端選手
         function deleteParticipant(id) {
             participantsRef.child(id).remove();
         }
 
-        // 🔥 重置所有中獎者
         function triggerResetWinners() {
             showCustomConfirm("確定要重置所有選手的中獎狀態嗎？", "重置判定確認", (confirmed) => {
                 if (confirmed) {
@@ -1010,7 +1012,6 @@
             });
         }
 
-        // 🔥 清空雲端資料庫
         function triggerClearParticipants() {
             showCustomConfirm("警告：確定要清空整份選手名單嗎？", "清空名單警告", (confirmed) => {
                 if (confirmed) {
@@ -1085,7 +1086,6 @@
             document.getElementById('modal-prize-action').classList.add('hidden');
         }
 
-        // 🔥 更新雲端獎項
         function savePrizeAction() {
             const name = document.getElementById('prize-input-name').value.trim();
             const desc = document.getElementById('prize-input-desc').value.trim();
@@ -1138,7 +1138,6 @@
             document.getElementById('batch-names').value = '';
         }
 
-        // 🔥 後台手動新增寫入 Firebase
         function saveAdminAction() {
             if (adminActionType === 'single') {
                 const name = document.getElementById('add-name').value.trim();
