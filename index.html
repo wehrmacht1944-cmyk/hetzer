@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>戰車道聯盟台灣支部總部 - 追獵者目標摸彩系統 (Firebase 雲端加密版)</title>
+    <title>戰車道聯盟台灣支部總部 - 追獵者目標摸彩系統</title>
+    <!-- Favicon 聲明 (消除 404 警告) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+    
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -80,7 +83,7 @@
 </head>
 <body class="h-full flex flex-col bg-tactical-grid text-stone-100 antialiased selection:bg-amber-600 selection:text-white">
 
-    <!-- 音效檔與音樂標籤 (自動重播 loop) -->
+    <!-- 音效檔與音樂標籤 -->
     <audio id="audio-cannon" src="cannon_fire.wav" preload="auto"></audio>
     <audio id="bgm-join" src="bgm_join.mp3" loop preload="auto"></audio>
     <audio id="bgm-stage" src="bgm_stage.mp3" loop preload="auto"></audio>
@@ -259,11 +262,11 @@
                 <div class="space-y-3">
                     <input type="password" id="input-admin-pass" placeholder="請輸入安全存取密碼" 
                         class="w-full px-4 py-3 bg-stone-100 border-2 border-stone-400 rounded-lg text-center font-bold text-stone-900 text-sm focus:outline-none focus:border-stone-900">
-                    <button onclick="verifyAdminPassword()" 
+                    <button type="button" onclick="verifyAdminPassword()" 
                         class="w-full py-3 bg-stone-900 hover:bg-amber-600 text-amber-400 hover:text-stone-950 font-black rounded-lg text-sm transition border-2 border-stone-950">
                         驗證密碼進入總部
                     </button>
-                    <p id="admin-error-msg" class="text-xs text-red-600 font-bold hidden">驗證失敗！密碼不正確。</p>
+                    <p id="admin-error-msg" class="text-xs text-red-600 font-bold hidden"></p>
                 </div>
             </div>
 
@@ -461,7 +464,7 @@
 
     <script>
         // -------------------------------------------------------------
-        // 🔥 Firebase 連線初始化 (請確保這裡填入您專案的金鑰組合)
+        // 🔥 Firebase 連線初始化
         // -------------------------------------------------------------
         const firebaseConfig = {
             apiKey: "AIzaSyDPSefHz_G_WvMt7on4rUgc4jrRYLNb2Aw",
@@ -478,15 +481,15 @@
         const participantsRef = db.ref('senshado_participants');
         const prizesRef = db.ref('senshado_prizes');
 
-        // App State & Data
+        // App State
         let participants = [];
         let prizes = [];
         let activeTab = 'join';
         let adminTab = 'roster';
         let isAdminAuthenticated = false;
         
-        // 🔒 SHA-
-        const adminPasswordHash = "28a50cbe9f42a7ec8f844a4eb2fb12d5dfbd1be364b4ec0f4aeccfdddcad9cb8";
+        // 🔒 Base64 編碼遮蔽字串 
+        const adminPasswordHash = "eXVrYXJpMTk0NDY2";
         
         let isSoundEnabled = true;
         let editingPrizeId = null;
@@ -501,7 +504,7 @@
         ];
 
         function initApp() {
-            // 🔥 即時監聽雲端選手名單
+            // 即時監聽雲端選手名單
             participantsRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
@@ -516,7 +519,7 @@
                 renderAdminTable();
             });
 
-            // 🔥 即時監聽雲端獎項設定
+            // 即時監聽雲端獎項設定
             prizesRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
@@ -579,11 +582,19 @@
             };
 
             Object.values(bgmList).forEach(bgm => {
-                if (bgm) { bgm.pause(); bgm.currentTime = 0; }
+                if (bgm) { 
+                    bgm.pause(); 
+                    bgm.currentTime = 0; 
+                }
             });
 
             if (isSoundEnabled && bgmList[tab]) {
-                bgmList[tab].play().catch(err => console.log("Autoplay blocked:", err));
+                const playPromise = bgmList[tab].play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(err => {
+                        console.log("BGM 播放已攔截 (無害預防)：", err);
+                    });
+                }
             }
         }
 
@@ -906,25 +917,31 @@
             document.getElementById('ticket-card').classList.add('hidden');
         }
 
-        // 🔒 使用 SHA-256 進行後台密碼驗證
-        async function verifyAdminPassword() {
-            const pwdInput = document.getElementById('input-admin-pass').value;
+        // 🔒 後台驗證 logic (Base64 編碼遮蔽 + 自動修剪前後空格 + 錯誤提示)
+        function verifyAdminPassword() {
+            const pwdInput = document.getElementById('input-admin-pass').value.trim();
+            const errorElement = document.getElementById('admin-error-msg');
             
-            const encoder = new TextEncoder();
-            const data = encoder.encode(pwdInput);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const hashedPwd = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            console.log("按下驗證按鈕，當前輸入之字串長度：", pwdInput.length);
 
-            if (hashedPwd === adminPasswordHash) {
-                isAdminAuthenticated = true;
-                document.getElementById('admin-auth-box').classList.add('hidden');
-                document.getElementById('admin-content').classList.remove('hidden');
-                document.getElementById('admin-error-msg').classList.add('hidden');
-                renderAdminTable();
-                renderPrizeCards();
-            } else {
-                document.getElementById('admin-error-msg').classList.remove('hidden');
+            try {
+                // 使用 Base64 比對，避免程式碼內出現明碼
+                if (btoa(pwdInput) === adminPasswordHash) {
+                    isAdminAuthenticated = true;
+                    document.getElementById('admin-auth-box').classList.add('hidden');
+                    document.getElementById('admin-content').classList.remove('hidden');
+                    errorElement.classList.add('hidden');
+                    
+                    renderAdminTable();
+                    renderPrizeCards();
+                    console.log("後台解鎖成功！Panzer Vor!");
+                } else {
+                    errorElement.innerText = `驗證失敗！密碼不正確。（當前輸入：${pwdInput}）`;
+                    errorElement.classList.remove('hidden');
+                }
+            } catch(e) {
+                errorElement.innerText = "驗證發生錯誤，請確認輸入格式。";
+                errorElement.classList.remove('hidden');
             }
         }
 
